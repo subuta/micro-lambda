@@ -1,0 +1,50 @@
+{
+  "name": "play-with-lambda",
+  "version": "1.0.0",
+  "description": "docker-lambda testing",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest",
+    "it": "jest -c ./jest.config.integration.js",
+    "start": "micro",
+    "dev": "node -r esm node_modules/.bin/micro-dev handlers/hoge.js",
+    "inspect": "node --inspect node_modules/.bin/micro-dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/subuta/play-with-lambda.git"
+  },
+  "standard": {
+    "parser": "babel-eslint",
+    "env": [
+      "mocha",
+      "jest",
+      "jasmine"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/subuta/play-with-lambda/issues"
+  },
+  "homepage": "https://github.com/subuta/play-with-lambda#readme",
+  "devDependencies": {
+    "@babel/core": "^7.2.2",
+    "@babel/polyfill": "^7.2.5",
+    "@babel/preset-env": "^7.3.1",
+    "@babel/register": "^7.0.0",
+    "babel-jest": "^24.0.0",
+    "docker-lambda": "^0.15.3",
+    "esm": "^3.2.0",
+    "jest": "^24.0.0",
+    "micro-dev": "^3.0.0",
+    "sinon": "^7.2.3",
+    "standard": "^12.0.1",
+    "supertest": "^3.4.2"
+  },
+  "dependencies": {
+    "lodash": "^4.17.11",
+    "micro": "^9.3.3"
+  }
+}
