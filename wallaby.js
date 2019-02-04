@@ -6,12 +6,15 @@ module.exports = (wallaby) => {
     files: [
       { pattern: 'src/index.js', instrument: false },
       'src/**/*.js',
+      'micro-lambda/**/*',
       'tests/**/*.js',
+      '!micro-lambda/**/__tests__/*.js',
       '!src/**/__tests__/*.js'
     ],
 
     tests: [
-      'src/**/__tests__/*.js'
+      'src/**/__tests__/*.js',
+      'micro-lambda/**/__tests__/*.js',
     ],
 
     env: {
