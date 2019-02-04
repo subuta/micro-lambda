@@ -9,8 +9,23 @@ import {
   forwardLibraryErrorResponseToApiGateway,
   forwardResponseToApiGateway,
   getSocketPath,
-  makeResolver
+  makeResolver, proxy, createServer
 } from '../utils'
+import _ from 'lodash'
+
+import apiGatewayEvent from '../events/api-gw'
+
+const mockApp = (req, res) => res.end('')
+
+const server = createServer(mockApp)
+
+const makeEvent = (eventOverrides) => {
+  const baseEvent = _.clone(apiGatewayEvent)
+  const headers = Object.assign({}, baseEvent.headers, eventOverrides.headers)
+  const root = Object.assign({}, baseEvent, eventOverrides)
+  root.headers = headers
+  return root
+}
 
 describe('getPathWithQueryStringParams', () => {
   test('getPathWithQueryStringParams: no params', () => {
@@ -345,5 +360,78 @@ describe('makeResolver', () => {
     }).then(successResponse => {
       expect(successResponse).toEqual('success')
     })
+  })
+})
+
+describe('error handlers', () => {
+  test('forwardConnectionErrorResponseToApiGateway', (done) => {
+    const server = createServer(mockApp)
+
+    const succeed = response => {
+      delete response.headers.date
+      expect(response).toEqual({
+        'body': '',
+        'headers': {},
+        statusCode: 502
+      })
+      done()
+    }
+    proxy(server, makeEvent({
+      path: '/',
+      httpMethod: 'GET',
+      body: '{"name": "Sam502"}',
+      headers: {
+        'Content-Length': '-1'
+      }
+    }), {
+      succeed
+    })
+  })
+
+  test('forwardLibraryErrorResponseToApiGateway', (done) => {
+    const server = createServer(mockApp)
+
+    const succeed = response => {
+      expect(response).toEqual({
+        statusCode: 500,
+        body: '',
+        headers: {}
+      })
+      done()
+    }
+    proxy(server, null, {
+      succeed
+    })
+  })
+})
+
+describe('server', () => {
+  test('serverListenCallback', (done) => {
+    const serverListenCallback = jest.fn()
+    const serverWithCallback = createServer(mockApp, serverListenCallback)
+    const succeed = response => {
+      expect(response.statusCode).toBe(200)
+      expect(serverListenCallback).toHaveBeenCalled()
+      serverWithCallback.close()
+      done()
+    }
+
+    proxy(serverWithCallback, makeEvent({}), {
+      succeed
+    })
+  })
+
+  test('server.onClose', (done) => {
+    const server = createServer(mockApp)
+
+    // NOTE: this must remain as the final test as it closes `server`
+    const succeed = response => {
+      server.on('close', () => {
+        expect(server._isListening).toBe(false)
+        done()
+      })
+      server.close()
+    }
+    proxy(server,makeEvent({}), {}, succeed)
   })
 })

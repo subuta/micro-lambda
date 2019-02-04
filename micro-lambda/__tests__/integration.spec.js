@@ -1,9 +1,10 @@
 // SEE: https://github.com/awslabs/aws-serverless-express/blob/master/__tests__/integration.js
 
-const path = require('path')
-const fs = require('fs')
-const apiGatewayEvent = require('../events/api-gw.json')
-const app = require('../app')
+import path from 'path'
+import fs from 'fs'
+import _ from 'lodash'
+import apiGatewayEvent from '../events/api-gw.json'
+import app from '../app'
 
 import {
   proxy,
@@ -17,12 +18,8 @@ const lambdaFunction = {
   }
 }
 
-function clone (json) {
-  return JSON.parse(JSON.stringify(json))
-}
-
-function makeEvent (eventOverrides) {
-  const baseEvent = clone(apiGatewayEvent)
+const makeEvent = (eventOverrides) => {
+  const baseEvent = _.clone(apiGatewayEvent)
   const headers = Object.assign({}, baseEvent.headers, eventOverrides.headers)
   const root = Object.assign({}, baseEvent, eventOverrides)
   root.headers = headers
@@ -390,86 +387,18 @@ describe('integration tests', () => {
       succeed
     })
   })
+})
 
-  test('forwardConnectionErrorResponseToApiGateway', (done) => {
-    const succeed = response => {
-      delete response.headers.date
-      expect(response).toEqual({
-        'body': '',
-        'headers': {},
-        statusCode: 502
-      })
-      done()
-    }
-    lambdaFunction.handler(makeEvent({
-      path: '/',
-      httpMethod: 'GET',
-      body: '{"name": "Sam502"}',
-      headers: {
-        'Content-Length': '-1'
-      }
-    }), {
-      succeed
-    })
-  })
+test('server.onError EADDRINUSE', (done) => {
+  const serverWithSameSocketPath = createServer((req, res) => res.end(''))
+  serverWithSameSocketPath._socketPathSuffix = server._socketPathSuffix
 
-  const mockApp = function (req, res) {
-    res.end('')
+  const succeed = response => {
+    expect(response.statusCode).toBe(200)
+    done()
+    serverWithSameSocketPath.close()
   }
-
-  test('forwardLibraryErrorResponseToApiGateway', (done) => {
-    const succeed = response => {
-      expect(response).toEqual({
-        statusCode: 500,
-        body: '',
-        headers: {}
-      })
-      done()
-    }
-    proxy(server, null, {
-      succeed
-    })
-  })
-
-  test('serverListenCallback', (done) => {
-    const serverListenCallback = jest.fn()
-    const serverWithCallback = createServer(mockApp, serverListenCallback)
-    const succeed = response => {
-      expect(response.statusCode).toBe(200)
-      expect(serverListenCallback).toHaveBeenCalled()
-      serverWithCallback.close()
-      done()
-    }
-
-    proxy(serverWithCallback, makeEvent({}), {
-      succeed
-    })
-  })
-
-  test('server.onError EADDRINUSE', (done) => {
-    const serverWithSameSocketPath = createServer(mockApp)
-    serverWithSameSocketPath._socketPathSuffix = server._socketPathSuffix
-    const succeed = response => {
-      expect(response.statusCode).toBe(200)
-      done()
-      serverWithSameSocketPath.close()
-    }
-    proxy(serverWithSameSocketPath, makeEvent({}), {
-      succeed
-    })
-  })
-
-  // test.skip('set-cookie')
-
-  test('server.onClose', (done) => {
-    // NOTE: this must remain as the final test as it closes `server`
-    const succeed = response => {
-      server.on('close', () => {
-        expect(server._isListening).toBe(false)
-        done()
-      })
-      server.close()
-    }
-    const server = lambdaFunction.handler(makeEvent({}), {}, succeed)
+  proxy(serverWithSameSocketPath, makeEvent({}), {
+    succeed
   })
 })

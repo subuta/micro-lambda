@@ -1,7 +1,6 @@
 // https://github.com/awslabs/aws-serverless-express/blob/master/__tests__/middleware.js
 
-const awsServerlessExpressMiddleware = require('../middleware')
-const eventContextMiddleware = awsServerlessExpressMiddleware.eventContext
+import { eventContext as eventContextMiddleware } from '../middleware'
 
 const mockNext = () => true
 const generateMockReq = () => {
