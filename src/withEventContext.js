@@ -1,12 +1,12 @@
-const eventContext = (options) => function apiGatewayEventParser (req, res, next) {
-  options = options || {} // defaults: {reqPropKey: 'apiGateway', deleteHeaders: true}
-  const reqPropKey = options.reqPropKey || 'apiGateway'
-  const deleteHeaders = options.deleteHeaders === undefined ? true : options.deleteHeaders
+const withEventContext = (fn, options = {}) => async (req, res) => {
+  const {
+    reqPropKey = 'apiGateway',
+    deleteHeaders = true
+  } = options
 
   if (!req.headers['x-apigateway-event'] || !req.headers['x-apigateway-context']) {
     console.error('Missing x-apigateway-event or x-apigateway-context header(s)')
-    next()
-    return
+    return fn(req, res)
   }
 
   req[reqPropKey] = {
@@ -19,13 +19,11 @@ const eventContext = (options) => function apiGatewayEventParser (req, res, next
     delete req.headers['x-apigateway-context']
   }
 
-  next()
+  return fn(req, res)
 }
 
 export {
-  eventContext
+  withEventContext
 }
 
-export default {
-  eventContext
-}
+export default withEventContext

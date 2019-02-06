@@ -7,7 +7,9 @@ import pkg from './package.json'
 
 const plugins = [
   json(),
-  babel(),
+  babel({
+    runtimeHelpers: true
+  }),
   resolve(),
   commonjs()
 ]

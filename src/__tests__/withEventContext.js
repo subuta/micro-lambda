@@ -1,8 +1,10 @@
 // https://github.com/awslabs/aws-serverless-express/blob/master/__tests__/middleware.js
 
-import { eventContext as eventContextMiddleware } from '../middleware'
+import withEventContext from '../withEventContext'
 
-const mockNext = () => true
+const mockNext = jest.fn()
+const mockRes = {}
+
 const generateMockReq = () => {
   return {
     headers: {
@@ -17,13 +19,18 @@ const generateMockReq = () => {
     }
   }
 }
-const mockRes = {}
+
+afterEach(() => {
+  mockNext.mockRestore()
+})
 
 test('defaults', () => {
   const req = generateMockReq()
   const originalHeaders = Object.assign({}, req.headers)
 
-  eventContextMiddleware()(req, mockRes, mockNext)
+  withEventContext(mockNext)(req, mockRes)
+
+  expect(mockNext).toHaveBeenCalledWith(req, mockRes)
 
   expect(req.apiGateway.event).toEqual(JSON.parse(decodeURIComponent(originalHeaders['x-apigateway-event'])))
   expect(req.apiGateway.context).toEqual(JSON.parse(decodeURIComponent(originalHeaders['x-apigateway-context'])))
@@ -35,7 +42,9 @@ test('options.reqPropKey', () => {
   const req = generateMockReq()
   const originalHeaders = Object.assign({}, req.headers)
 
-  eventContextMiddleware({ reqPropKey: '_apiGateway' })(req, mockRes, mockNext)
+  withEventContext(mockNext, { reqPropKey: '_apiGateway' })(req, mockRes)
+
+  expect(mockNext).toHaveBeenCalledWith(req, mockRes)
 
   expect(req._apiGateway.event).toEqual(JSON.parse(decodeURIComponent(originalHeaders['x-apigateway-event'])))
   expect(req._apiGateway.context).toEqual(JSON.parse(decodeURIComponent(originalHeaders['x-apigateway-context'])))
@@ -47,7 +56,9 @@ test('options.deleteHeaders = false', () => {
   const req = generateMockReq()
   const originalHeaders = Object.assign({}, req.headers)
 
-  eventContextMiddleware({ deleteHeaders: false })(req, mockRes, mockNext)
+  withEventContext(mockNext, { deleteHeaders: false })(req, mockRes)
+
+  expect(mockNext).toHaveBeenCalledWith(req, mockRes)
 
   expect(req.apiGateway.event).toEqual(JSON.parse(decodeURIComponent(originalHeaders['x-apigateway-event'])))
   expect(req.apiGateway.context).toEqual(JSON.parse(decodeURIComponent(originalHeaders['x-apigateway-context'])))
@@ -59,7 +70,9 @@ test('Missing x-apigateway-event', () => {
   const req = generateMockReq()
   delete req.headers['x-apigateway-event']
 
-  eventContextMiddleware({ deleteHeaders: false })(req, mockRes, mockNext)
+  withEventContext(mockNext, { deleteHeaders: false })(req, mockRes)
+
+  expect(mockNext).toHaveBeenCalledWith(req, mockRes)
 
   expect(req.apiGateway).toBe(undefined)
 })
@@ -68,7 +81,9 @@ test('Missing x-apigateway-context', () => {
   const req = generateMockReq()
   delete req.headers['x-apigateway-context']
 
-  eventContextMiddleware({ deleteHeaders: false })(req, mockRes, mockNext)
+  withEventContext(mockNext, { deleteHeaders: false })(req, mockRes)
+
+  expect(mockNext).toHaveBeenCalledWith(req, mockRes)
 
   expect(req.apiGateway).toBe(undefined)
 })

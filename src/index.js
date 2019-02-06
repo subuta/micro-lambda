@@ -3,12 +3,16 @@ import {
   serve
 } from './utils'
 
+import withEventContext from './withEventContext'
+
 export {
   proxy,
-  serve
+  serve,
+  withEventContext
 }
 
 export default {
   proxy,
-  serve
+  serve,
+  withEventContext
 }
