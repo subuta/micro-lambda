@@ -15,7 +15,7 @@ Then you can create your lambda with micro!
 
 SEE: [example](example/index.js)
 
-```bash
+```jsx harmony
 const { serve, proxy, withEventContext } = require('micro-lambda')
 const micro = require('micro')
 
