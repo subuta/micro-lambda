@@ -1,8 +1,11 @@
 {
-  "name": "play-with-lambda",
-  "version": "1.0.0",
-  "description": "docker-lambda testing",
+  "name": "micro-lambda",
+  "version": "0.0.1",
+  "description": "Run zeit/micro app on top of AWS Lambda and Amazon API Gateway",
   "main": "lib/index.js",
+  "files": [
+    "lib/**/*"
+  ],
   "scripts": {
     "test": "run-p test:*",
     "test:lib": "jest",
@@ -11,11 +14,12 @@
     "build:bundle": "rollup -c",
     "dev": "node -r esm node_modules/.bin/micro-dev example/handler.js",
     "start": "node -r esm node_modules/.bin/micro example/handler.js",
-    "inspect": "node --inspect node_modules/.bin/micro-dev example/handler.js"
+    "inspect": "node --inspect node_modules/.bin/micro-dev example/handler.js",
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/subuta/play-with-lambda.git"
+    "url": "git+https://github.com/subuta/micro-lambda.git"
   },
   "standard": {
     "parser": "babel-eslint",
@@ -29,9 +33,9 @@
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/subuta/play-with-lambda/issues"
+    "url": "https://github.com/subuta/micro-lambda/issues"
   },
-  "homepage": "https://github.com/subuta/play-with-lambda#readme",
+  "homepage": "https://github.com/subuta/micro-lambda#readme",
   "devDependencies": {
     "@babel/core": "^7.2.2",
     "@babel/plugin-transform-runtime": "^7.2.0",

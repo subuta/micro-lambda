@@ -1,5 +1,5 @@
-# play-with-lambda
-docker-lambda testing
+# micro-lambda
+Run zeit/micro app on top of AWS Lambda and Amazon API Gateway
 
 ### Local run lambda (by docker-lambda)
 
