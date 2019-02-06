@@ -1,6 +1,6 @@
 {
   "name": "micro-lambda",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Run zeit/micro app on top of AWS Lambda and Amazon API Gateway",
   "main": "lib/index.js",
   "files": [
@@ -29,9 +29,19 @@
       "jasmine"
     ]
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "aws",
+    "service",
+    "microservice",
+    "serverless",
+    "API",
+    "api",
+    "gateway",
+    "lambda",
+    "micro"
+  ],
+  "author": "subuta <shunta.3110@gmail.com>",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/subuta/micro-lambda/issues"
   },
