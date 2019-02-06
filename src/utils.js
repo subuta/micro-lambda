@@ -2,7 +2,8 @@ import url from 'url'
 import _ from 'lodash'
 import binaryCase from 'binary-case'
 import isType from 'type-is'
-import http from "http"
+import http, { Server } from 'http'
+import etagFn from 'etag'
 
 const getPathWithQueryStringParams = (event) => {
   return url.format({ pathname: event.path, query: event.queryStringParameters })
@@ -27,8 +28,14 @@ const isContentTypeBinaryMimeType = (params) => {
 
 const getRandomString = () => Math.random().toString(36).substring(2, 15)
 
-const createServer = (requestListener, serverListenCallback, binaryTypes) => {
-  const server = http.createServer(requestListener)
+const serve = (listener, serverListenCallback, binaryTypes) => {
+  let server
+
+  if (listener instanceof Server) {
+    server = listener
+  } else {
+    server = http.createServer(listener)
+  }
 
   server._socketPathSuffix = getRandomString()
   server._binaryTypes = binaryTypes ? binaryTypes.slice() : []
@@ -123,6 +130,7 @@ const forwardResponseToApiGateway = (server, response, resolver) => {
     .on('data', (chunk) => buf.push(chunk))
     .on('end', () => {
       const bodyBuffer = Buffer.concat(buf)
+
       const statusCode = response.statusCode
       const headers = response.headers
 
@@ -151,7 +159,7 @@ const forwardResponseToApiGateway = (server, response, resolver) => {
       const contentType = getContentType({ contentTypeHeader: headers['content-type'] })
       const isBase64Encoded = isContentTypeBinaryMimeType({ contentType, binaryMimeTypes: server._binaryTypes })
       const body = bodyBuffer.toString(isBase64Encoded ? 'base64' : 'utf8')
-      const successResponse = {statusCode, body, headers, isBase64Encoded}
+      const successResponse = { statusCode, body, headers, isBase64Encoded }
 
       resolver.succeed({ response: successResponse })
     })
@@ -163,11 +171,12 @@ const forwardRequestToNodeServer = (server, event, context, resolver) => {
     const req = http.request(requestOptions, (response) => forwardResponseToApiGateway(server, response, resolver))
     if (event.body) {
       const body = getEventBody(event)
-
       req.write(body)
     }
 
-    req.on('error', (error) => forwardConnectionErrorResponseToApiGateway(error, resolver))
+    req.on('error', (error) => {
+      return forwardConnectionErrorResponseToApiGateway(error, resolver)
+    })
       .end()
   } catch (error) {
     forwardLibraryErrorResponseToApiGateway(error, resolver)
@@ -175,21 +184,21 @@ const forwardRequestToNodeServer = (server, event, context, resolver) => {
   }
 }
 
-const proxy = (server, event, context, callback) => {
+const proxy = (server, event, context = {}, callback = undefined) => {
   const fn = (resolver) => {
     if (server._isListening) {
       forwardRequestToNodeServer(server, event, context, resolver)
     } else {
-      startServer(server)
+      return startServer(server)
         .on('listening', () => {
           return forwardRequestToNodeServer(server, event, context, resolver)
         })
     }
   }
 
-  if (!callback) {
+  if (!context.succeed && !callback) {
     return new Promise((resolve, reject) => {
-      fn(makeResolver({
+      return fn(makeResolver({
         context,
         callback,
         promise: { resolve, reject }
@@ -197,8 +206,7 @@ const proxy = (server, event, context, callback) => {
     })
   }
 
-  fn(makeResolver({ context, callback }))
-  return server
+  return fn(makeResolver({ context, callback }))
 }
 
 const makeResolver = (params) => {
@@ -213,6 +221,20 @@ const makeResolver = (params) => {
   }
 }
 
+const createETagGenerator = (options) => {
+  return function generateETag (body, encoding) {
+    const buf = !Buffer.isBuffer(body)
+      ? Buffer.from(body, encoding)
+      : body
+    return etagFn(buf, options)
+  }
+}
+
+// Express compatible etag function.
+// SEE: https://github.com/expressjs/express/blob/master/lib/utils.js#L274
+const etag = createETagGenerator({ weak: false })
+const wetag = createETagGenerator({ weak: true })
+
 export {
   getPathWithQueryStringParams,
   getSocketPath,
@@ -221,8 +243,10 @@ export {
   forwardConnectionErrorResponseToApiGateway,
   forwardLibraryErrorResponseToApiGateway,
   makeResolver,
-  createServer,
-  proxy
+  serve,
+  proxy,
+  etag,
+  wetag
 }
 
 export default {
@@ -233,6 +257,8 @@ export default {
   forwardConnectionErrorResponseToApiGateway,
   forwardLibraryErrorResponseToApiGateway,
   makeResolver,
-  createServer,
-  proxy
+  serve,
+  proxy,
+  etag,
+  wetag
 }

@@ -9,15 +9,17 @@ import {
   forwardLibraryErrorResponseToApiGateway,
   forwardResponseToApiGateway,
   getSocketPath,
-  makeResolver, proxy, createServer
+  makeResolver,
+  proxy,
+  serve
 } from '../utils'
 import _ from 'lodash'
 
-import apiGatewayEvent from '../events/api-gw'
+import apiGatewayEvent from './events/api-gw'
 
 const mockApp = (req, res) => res.end('')
 
-const server = createServer(mockApp)
+const server = serve(mockApp)
 
 const makeEvent = (eventOverrides) => {
   const baseEvent = _.clone(apiGatewayEvent)
@@ -365,7 +367,7 @@ describe('makeResolver', () => {
 
 describe('error handlers', () => {
   test('forwardConnectionErrorResponseToApiGateway', (done) => {
-    const server = createServer(mockApp)
+    const server = serve(mockApp)
 
     const succeed = response => {
       delete response.headers.date
@@ -389,7 +391,7 @@ describe('error handlers', () => {
   })
 
   test('forwardLibraryErrorResponseToApiGateway', (done) => {
-    const server = createServer(mockApp)
+    const server = serve(mockApp)
 
     const succeed = response => {
       expect(response).toEqual({
@@ -406,9 +408,9 @@ describe('error handlers', () => {
 })
 
 describe('server', () => {
-  test('serverListenCallback', (done) => {
+  test('serverserveCallback', (done) => {
     const serverListenCallback = jest.fn()
-    const serverWithCallback = createServer(mockApp, serverListenCallback)
+    const serverWithCallback = serve(mockApp, serverListenCallback)
     const succeed = response => {
       expect(response.statusCode).toBe(200)
       expect(serverListenCallback).toHaveBeenCalled()
@@ -422,7 +424,7 @@ describe('server', () => {
   })
 
   test('server.onClose', (done) => {
-    const server = createServer(mockApp)
+    const server = serve(mockApp)
 
     // NOTE: this must remain as the final test as it closes `server`
     const succeed = response => {
@@ -432,6 +434,6 @@ describe('server', () => {
       })
       server.close()
     }
-    proxy(server,makeEvent({}), {}, succeed)
+    proxy(server, makeEvent({}), {}, succeed)
   })
 })

@@ -3,20 +3,37 @@
 import path from 'path'
 import fs from 'fs'
 import _ from 'lodash'
-import apiGatewayEvent from '../events/api-gw.json'
-import app from '../app'
+import apiGatewayEvent from './events/api-gw.json'
+
+import micro from 'micro'
+import cors from 'micro-cors'
+
+import {
+  pug,
+  rest,
+  serve as _serve
+} from './handlers'
+
+import {
+  setUsers
+} from './handlers/rest'
 
 import {
   proxy,
-  createServer
-} from '../utils'
+  serve
+} from '..'
 
-const server = createServer(app)
-const lambdaFunction = {
-  handler: (event, context, callback, _server) => {
-    return proxy(_server || server, event, context, callback)
+const createHandler = (listener) => (event, context, callback, _server) => {
+  if (!_server) {
+    _server = serve(micro(cors({ allowCredentials: false })(listener)))
   }
+  return proxy(_server, event, context, callback)
 }
+
+const server = serve(micro(cors({ allowCredentials: false })(pug)))
+
+const pugHandler = createHandler(pug)
+const restHandler = createHandler(rest)
 
 const makeEvent = (eventOverrides) => {
   const baseEvent = _.clone(apiGatewayEvent)
@@ -29,9 +46,9 @@ const makeEvent = (eventOverrides) => {
 function expectedRootResponse () {
   return makeResponse({
     'headers': {
-      'content-length': '3753',
+      'content-length': '3563',
       'content-type': 'text/html; charset=utf-8',
-      'etag': 'W/"ea9-9zmGHdFFwxp6/hnvgmR4G/QJPpg"'
+      'etag': 'W/"deb-x+0UpCiuQnoKxcNHE3VgCiidxtM"'
     }
   })
 }
@@ -45,8 +62,7 @@ function makeResponse (response) {
   const baseHeaders = {
     'access-control-allow-origin': '*',
     'connection': 'close',
-    'content-type': 'application/json; charset=utf-8',
-    'x-powered-by': 'Express'
+    'content-type': 'application/json; charset=utf-8'
   }
   const headers = Object.assign({}, baseHeaders, response.headers)
   const finalResponse = Object.assign({}, baseResponse, response)
@@ -54,36 +70,34 @@ function makeResponse (response) {
   return finalResponse
 }
 
-describe('integration tests', () => {
-  test('proxy returns server', (done) => {
-    const succeed = () => {
-      done()
-    }
+const newName = 'Sandy Samantha Salamander'
 
-    const server = lambdaFunction.handler(makeEvent({
-      path: '/',
-      httpMethod: 'GET'
-    }), {}, succeed)
+describe('integration tests - server', () => {
+  test('proxy returns server', async (done) => {
+    const succeed = () => done()
+    const server = await pugHandler(makeEvent({ path: '/', httpMethod: 'GET' }), { succeed })
 
     expect(server._socketPathSuffix).toBeTruthy()
   })
 
-  test('GET HTML (initial request)', (done) => {
+  test('server.onError EADDRINUSE', (done) => {
+    const serverWithSameSocketPath = serve((req, res) => res.end(''))
+    serverWithSameSocketPath._socketPathSuffix = server._socketPathSuffix
+
     const succeed = response => {
-      delete response.headers.date
-      expect(response.body.startsWith('<!DOCTYPE html>')).toBe(true)
-      const expectedResponse = expectedRootResponse()
-      delete response.body
-      delete expectedResponse.body
-      expect(response).toEqual(expectedResponse)
+      expect(response.statusCode).toBe(200)
       done()
+      serverWithSameSocketPath.close()
     }
-    lambdaFunction.handler(makeEvent({ path: '/', httpMethod: 'GET' }), {
+    proxy(serverWithSameSocketPath, makeEvent({}), {
       succeed
     })
   })
+})
 
-  test('GET HTML (subsequent request)', (done) => {
+describe('integration tests - HTML(pug handler)', () => {
+  test('GET HTML', (done) => {
+    // GET HTML (initial request)
     const succeed = response => {
       delete response.headers.date
       expect(response.body.startsWith('<!DOCTYPE html>')).toBe(true)
@@ -93,12 +107,40 @@ describe('integration tests', () => {
       expect(response).toEqual(expectedResponse)
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    pugHandler(makeEvent({
       path: '/',
       httpMethod: 'GET'
-    }), {
-      succeed
-    })
+    }), { succeed }, undefined, server)
+
+    // GET HTML (subsequent request)
+    const secondSucceed = response => {
+      delete response.headers.date
+      expect(response.body.startsWith('<!DOCTYPE html>')).toBe(true)
+      const expectedResponse = expectedRootResponse()
+      delete response.body
+      delete expectedResponse.body
+      expect(response).toEqual(expectedResponse)
+      done()
+    }
+
+    pugHandler(makeEvent({
+      path: '/',
+      httpMethod: 'GET'
+    }), { succeed: secondSucceed }, undefined, server)
+  })
+})
+
+describe('integration tests - JSON(rest handler)', () => {
+  beforeEach(() => {
+    // Reset users.
+    setUsers([{
+      id: 1,
+      name: 'Joe'
+    }, {
+      id: 2,
+      name: 'Jane'
+    }])
   })
 
   test('GET JSON collection', (done) => {
@@ -108,29 +150,26 @@ describe('integration tests', () => {
         'body': '[{"id":1,"name":"Joe"},{"id":2,"name":"Jane"}]',
         'headers': {
           'content-length': '46',
-          'etag': 'W/"2e-Lu6qxFOQSPFulDAGUFiiK6QgREo"'
+          'etag': 'W/"2-FIn5I8TcpykXiz4yM0WFUNjd3yk"'
         }
       }))
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    restHandler(makeEvent({
       path: '/users',
       httpMethod: 'GET'
-    }), {
-      succeed
-    })
+    }), { succeed })
   })
 
   test('GET missing route', (done) => {
     const succeed = response => {
       delete response.headers.date
-      expect(response.body.startsWith('<!DOCTYPE html>')).toBe(true)
+      // expect(response.body.startsWith('<!DOCTYPE html>')).toBe(true)
       const expectedResponse = makeResponse({
         'headers': {
-          'content-length': '151',
-          'content-security-policy': 'default-src \'self\'',
-          'content-type': 'text/html; charset=utf-8',
-          'x-content-type-options': 'nosniff'
+          'content-length': '15',
+          'content-type': 'text/html; charset=utf-8'
         },
         statusCode: 404
       })
@@ -139,12 +178,11 @@ describe('integration tests', () => {
       expect(response).toEqual(expectedResponse)
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    restHandler(makeEvent({
       path: '/nothing-here',
       httpMethod: 'GET'
-    }), {
-      succeed
-    })
+    }), { succeed })
   })
 
   test('GET JSON single', (done) => {
@@ -159,12 +197,11 @@ describe('integration tests', () => {
       }))
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    restHandler(makeEvent({
       path: '/users/1',
       httpMethod: 'GET'
-    }), {
-      succeed
-    })
+    }), { succeed })
   })
 
   test('GET JSON single (resolutionMode = CALLBACK)', (done) => {
@@ -179,13 +216,14 @@ describe('integration tests', () => {
       }))
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    restHandler(makeEvent({
       path: '/users/1',
       httpMethod: 'GET'
     }), {}, callback)
   })
 
-  test('GET JSON single (resolutionMode = PROMISE)', (done) => {
+  test('GET JSON single (resolutionMode = PROMISE)', async (done) => {
     const succeed = response => {
       delete response.headers.date
       expect(response).toEqual(makeResponse({
@@ -197,11 +235,11 @@ describe('integration tests', () => {
       }))
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    restHandler(makeEvent({
       path: '/users/1',
       httpMethod: 'GET'
-    }), {})
-      .then(succeed)
+    }), {}).then(succeed)
   })
 
   test('GET JSON single (resolutionMode = PROMISE; new server)', (done) => {
@@ -217,12 +255,11 @@ describe('integration tests', () => {
       newServer.close()
       done()
     }
-    const newServer = createServer(app)
-    lambdaFunction.handler(makeEvent({
+    const newServer = serve(micro(cors({ allowCredentials: false })(rest)))
+    restHandler(makeEvent({
       path: '/users/1',
       httpMethod: 'GET'
-    }), {}, null, newServer)
-      .then(succeed)
+    }), {}, null, newServer).then(succeed)
   })
 
   test('GET JSON single 404', (done) => {
@@ -238,48 +275,14 @@ describe('integration tests', () => {
       }))
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    restHandler(makeEvent({
       path: '/users/3',
       httpMethod: 'GET'
-    }), {
-      succeed
-    })
+    }), { succeed })
   })
 
-  test('success - image response', (done) => {
-    const succeed = response => {
-      delete response.headers.date
-      delete response.headers.etag
-      delete response.headers['last-modified']
-
-      const samLogoPath = path.resolve(path.join(__dirname, '../sam-logo.png'))
-      const samLogoImage = fs.readFileSync(samLogoPath)
-      const samLogoBase64 = Buffer.from(samLogoImage).toString('base64')
-
-      expect(response).toEqual(makeResponse({
-        'body': samLogoBase64,
-        'headers': {
-          'accept-ranges': 'bytes',
-          'cache-control': 'public, max-age=0',
-          'content-length': '15933',
-          'content-type': 'image/png'
-        },
-        'isBase64Encoded': true
-      }))
-      serverWithBinaryTypes.close()
-      done()
-    }
-    const serverWithBinaryTypes = createServer(app, null, ['image/*'])
-    proxy(serverWithBinaryTypes, makeEvent({
-      path: '/sam',
-      httpMethod: 'GET'
-    }), {
-      succeed
-    })
-  })
-  const newName = 'Sandy Samantha Salamander'
-
-  test('POST JSON', (done) => {
+  test('POST JSON', async (done) => {
     const succeed = response => {
       delete response.headers.date
       expect(response).toEqual(makeResponse({
@@ -290,19 +293,16 @@ describe('integration tests', () => {
         },
         statusCode: 201
       }))
-      done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    await restHandler(makeEvent({
       path: '/users',
       httpMethod: 'POST',
       body: `{"name": "${newName}"}`
-    }), {
-      succeed
-    })
-  })
+    })).then(succeed)
 
-  test('GET JSON single (again; post-creation) 200', (done) => {
-    const succeed = response => {
+    // GET JSON single (again; post-creation) 200
+    const secondSucceed = response => {
       delete response.headers.date
       expect(response).toEqual(makeResponse({
         'body': `{"id":3,"name":"${newName}"}`,
@@ -314,33 +314,11 @@ describe('integration tests', () => {
       }))
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    await restHandler(makeEvent({
       path: '/users/3',
       httpMethod: 'GET'
-    }), {
-      succeed
-    })
-  })
-
-  test('DELETE JSON', (done) => {
-    const succeed = response => {
-      delete response.headers.date
-      expect(response).toEqual(makeResponse({
-        'body': `[{"id":2,"name":"Jane"},{"id":3,"name":"${newName}"}]`,
-        'headers': {
-          'content-length': '68',
-          'etag': 'W/"44-AtuxlvrIBL8NXP4gvEQTI77suNg"'
-        },
-        statusCode: 200
-      }))
-      done()
-    }
-    lambdaFunction.handler(makeEvent({
-      path: '/users/1',
-      httpMethod: 'DELETE'
-    }), {
-      succeed
-    })
+    })).then(secondSucceed)
   })
 
   test('PUT JSON', (done) => {
@@ -356,13 +334,67 @@ describe('integration tests', () => {
       }))
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    restHandler(makeEvent({
       path: '/users/2',
       httpMethod: 'PUT',
       body: '{"name": "Samuel"}'
-    }), {
-      succeed
-    })
+    }), { succeed })
+  })
+
+  test('DELETE JSON', (done) => {
+    const succeed = response => {
+      delete response.headers.date
+      expect(response).toEqual(makeResponse({
+        'body': `[{"id":2,"name":"Jane"}]`,
+        'headers': {
+          'content-length': '24',
+          etag: 'W/"18-51C7Qo/CplTWyvH+9qGhjvBaExQ"'
+        },
+        statusCode: 200
+      }))
+      done()
+    }
+
+    restHandler(makeEvent({
+      path: '/users/1',
+      httpMethod: 'DELETE'
+    }), { succeed })
+  })
+})
+
+describe('integration tests - Image(serve handler)', () => {
+  test('success - image response', (done) => {
+    const serverWithBinaryTypes = serve(micro(cors({ allowCredentials: false })(_serve)), null, ['image/*'])
+
+    const succeed = response => {
+      delete response.headers.date
+      delete response.headers.etag
+      delete response.headers['last-modified']
+
+      const oxPath = path.resolve(path.join(__dirname, './ox.jpeg'))
+      const oxImage = fs.readFileSync(oxPath)
+      const oxBase64 = Buffer.from(oxImage).toString('base64')
+
+      expect(response).toEqual(makeResponse({
+        'body': oxBase64,
+        'headers': {
+          'content-length': '8313',
+          'content-disposition': 'inline; filename="ox.jpeg"',
+          'accept-ranges': 'bytes',
+          'content-type': 'image/jpeg'
+        },
+        'isBase64Encoded': true
+      }))
+
+      serverWithBinaryTypes.close()
+      done()
+    }
+
+    proxy(serverWithBinaryTypes, makeEvent({
+      path: '/ox',
+      httpMethod: 'GET'
+    }), { succeed })
   })
 
   test('base64 encoded request', (done) => {
@@ -378,27 +410,12 @@ describe('integration tests', () => {
       }))
       done()
     }
-    lambdaFunction.handler(makeEvent({
+
+    restHandler(makeEvent({
       path: '/users/2',
       httpMethod: 'PUT',
-      body: global.btoa('{"name": "Samuel"}'),
+      body: btoa('{"name": "Samuel"}'),
       isBase64Encoded: true
-    }), {
-      succeed
-    })
-  })
-})
-
-test('server.onError EADDRINUSE', (done) => {
-  const serverWithSameSocketPath = createServer((req, res) => res.end(''))
-  serverWithSameSocketPath._socketPathSuffix = server._socketPathSuffix
-
-  const succeed = response => {
-    expect(response.statusCode).toBe(200)
-    done()
-    serverWithSameSocketPath.close()
-  }
-  proxy(serverWithSameSocketPath, makeEvent({}), {
-    succeed
+    }), { succeed })
   })
 })

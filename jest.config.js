@@ -7,6 +7,9 @@ module.exports = {
     '/node_modules/',
     '<rootDir>/tests/integration/'
   ],
+  testMatch: [
+    '**/?(*.)+(spec).[jt]s?(x)'
+  ],
   coverageReporters: [
     'text-summary',
     'lcov'

@@ -1,19 +1,18 @@
-import sinon from 'sinon'
-import _ from 'lodash'
-
+import micro from 'micro'
 import request from 'supertest'
 
-import hoge from '../hoge'
+import hoge from '../handler'
 
 let client = null
 
 beforeEach(async () => {
-  client = request(hoge)
+  client = request(micro(hoge))
 })
 
 afterEach(async () => {
 })
 
+// Unit test
 test('should return valid json', async () => {
   const response = await client.post('/')
     .send({ hoge: 'fuga' })

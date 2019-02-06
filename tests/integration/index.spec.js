@@ -1,11 +1,9 @@
-import sinon from 'sinon'
-import _ from 'lodash'
-import path from "path"
-
+import path from 'path'
 import lambda from 'docker-lambda'
 
+import apiGatewayEvent from '../../src/__tests__/events/api-gw.json'
+
 const ROOT_DIR = path.resolve(__dirname, '../../')
-const SRC_DIR = path.resolve(ROOT_DIR, './src')
 
 beforeEach(async () => {
 })
@@ -13,14 +11,15 @@ beforeEach(async () => {
 afterEach(async () => {
 })
 
-test('Should run without error with docker-lambda', async () => {
-  const result = lambda({
-    taskDir: SRC_DIR,
+test('Run without error with docker-lambda', async () => {
+  const response = lambda({
+    taskDir: ROOT_DIR,
     dockerImage: 'lambci/lambda:nodejs8.10',
-    handler: 'index.handler',
-    event: {
-      some: 'event'
-    }
+    handler: 'example/index.handler',
+    event: apiGatewayEvent
   })
-  expect(result).toEqual('done!')
+
+  expect(response.statusCode).toEqual(200)
+  expect(response.body).toEqual(jasmine.any(String))
+  expect(JSON.parse(response.body)).toEqual({ hoge: 'fuga' })
 })

@@ -1,20 +1,19 @@
 const _ = require('lodash')
-const path = require('path')
 
 module.exports = (wallaby) => {
   return {
     files: [
-      { pattern: 'src/index.js', instrument: false },
-      'src/**/*.js',
-      'micro-lambda/**/*',
+      { pattern: 'example/index.js', instrument: false },
+      'example/**/*.js',
+      'src/**/*',
       'tests/**/*.js',
-      '!micro-lambda/**/__tests__/*.js',
-      '!src/**/__tests__/*.js'
+      '!example/**/__tests__/*.spec.js',
+      '!src/**/__tests__/*.spec.js'
     ],
 
     tests: [
-      'src/**/__tests__/*.js',
-      'micro-lambda/**/__tests__/*.js',
+      'example/**/__tests__/*.spec.js',
+      'src/**/__tests__/*.spec.js'
     ],
 
     env: {
