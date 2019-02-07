@@ -5,7 +5,7 @@ import fs from 'fs'
 import _ from 'lodash'
 import apiGatewayEvent from './events/api-gw.json'
 
-import micro from 'micro'
+import { run } from 'micro'
 import cors from 'micro-cors'
 
 import {
@@ -20,17 +20,17 @@ import {
 
 import {
   proxy,
-  serve
-} from '..'
+  createServer
+} from 'aws-serverless-express'
 
-const createHandler = (listener) => (event, context, callback, _server) => {
+const server = createServer((req, res) => run(req, res, cors({ allowCredentials: false })(pug)))
+
+const createHandler = (listener) => (event, context, resolutionMode, callback, _server) => {
   if (!_server) {
-    _server = serve(micro(cors({ allowCredentials: false })(listener)))
+    _server = createServer((req, res) => run(req, res, cors({ allowCredentials: false })(listener)))
   }
-  return proxy(_server, event, context, callback)
+  return proxy(_server || server, event, context, resolutionMode, callback)
 }
-
-const server = serve(micro(cors({ allowCredentials: false })(pug)))
 
 const pugHandler = createHandler(pug)
 const restHandler = createHandler(rest)
@@ -81,7 +81,7 @@ describe('integration tests - server', () => {
   })
 
   test('server.onError EADDRINUSE', (done) => {
-    const serverWithSameSocketPath = serve((req, res) => res.end(''))
+    const serverWithSameSocketPath = createServer((req, res) => res.end(''))
     serverWithSameSocketPath._socketPathSuffix = server._socketPathSuffix
 
     const succeed = response => {
@@ -220,7 +220,7 @@ describe('integration tests - JSON(rest handler)', () => {
     restHandler(makeEvent({
       path: '/users/1',
       httpMethod: 'GET'
-    }), {}, callback)
+    }), {}, 'CALLBACK', callback)
   })
 
   test('GET JSON single (resolutionMode = PROMISE)', async (done) => {
@@ -239,7 +239,7 @@ describe('integration tests - JSON(rest handler)', () => {
     restHandler(makeEvent({
       path: '/users/1',
       httpMethod: 'GET'
-    }), {}).then(succeed)
+    }), {}, 'PROMISE').promise.then(succeed)
   })
 
   test('GET JSON single (resolutionMode = PROMISE; new server)', (done) => {
@@ -255,11 +255,12 @@ describe('integration tests - JSON(rest handler)', () => {
       newServer.close()
       done()
     }
-    const newServer = serve(micro(cors({ allowCredentials: false })(rest)))
+
+    const newServer = createServer((req, res) => run(req, res, cors({ allowCredentials: false })(rest)))
     restHandler(makeEvent({
       path: '/users/1',
       httpMethod: 'GET'
-    }), {}, null, newServer).then(succeed)
+    }), {}, 'PROMISE', null, newServer).promise.then(succeed)
   })
 
   test('GET JSON single 404', (done) => {
@@ -299,7 +300,7 @@ describe('integration tests - JSON(rest handler)', () => {
       path: '/users',
       httpMethod: 'POST',
       body: `{"name": "${newName}"}`
-    })).then(succeed)
+    }), {}, 'PROMISE').promise.then(succeed)
 
     // GET JSON single (again; post-creation) 200
     const secondSucceed = response => {
@@ -318,7 +319,7 @@ describe('integration tests - JSON(rest handler)', () => {
     await restHandler(makeEvent({
       path: '/users/3',
       httpMethod: 'GET'
-    })).then(secondSucceed)
+    }), {}, 'PROMISE').promise.then(secondSucceed)
   })
 
   test('PUT JSON', (done) => {
@@ -365,7 +366,7 @@ describe('integration tests - JSON(rest handler)', () => {
 
 describe('integration tests - Image(serve handler)', () => {
   test('success - image response', (done) => {
-    const serverWithBinaryTypes = serve(micro(cors({ allowCredentials: false })(_serve)), null, ['image/*'])
+    const serverWithBinaryTypes = createServer((req, res) => run(req, res, cors({ allowCredentials: false })(_serve)), null, ['image/*'])
 
     const succeed = response => {
       delete response.headers.date
@@ -414,7 +415,7 @@ describe('integration tests - Image(serve handler)', () => {
     restHandler(makeEvent({
       path: '/users/2',
       httpMethod: 'PUT',
-      body: btoa('{"name": "Samuel"}'),
+      body: global.btoa('{"name": "Samuel"}'),
       isBase64Encoded: true
     }), { succeed })
   })

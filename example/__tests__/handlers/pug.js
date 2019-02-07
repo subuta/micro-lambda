@@ -1,5 +1,4 @@
 import pug from 'pug'
-import etag from 'etag'
 import path from 'path'
 
 import { wetag } from '../../utils'

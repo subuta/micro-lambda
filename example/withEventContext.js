@@ -1,4 +1,4 @@
-const withEventContext = (fn, options = {}) => async (req, res) => {
+const withEventContext = (fn, options = {}) => (req, res) => {
   const {
     reqPropKey = 'apiGateway',
     deleteHeaders = true
@@ -22,8 +22,4 @@ const withEventContext = (fn, options = {}) => async (req, res) => {
   return fn(req, res)
 }
 
-export {
-  withEventContext
-}
-
-export default withEventContext
+module.exports = withEventContext

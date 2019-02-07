@@ -1,8 +1,8 @@
 import path from 'path'
 import lambda from 'docker-lambda'
 
-import getEvent from '../../src/__tests__/events/api-gw.json'
-import postEvent from '../../src/__tests__/events/api-gw-post.json'
+import getEvent from '../../example/__tests__/events/api-gw.json'
+import postEvent from '../../example/__tests__/events/api-gw-post.json'
 
 const ROOT_DIR = path.resolve(__dirname, '../../')
 
