@@ -29,10 +29,10 @@ exports.handler = (event, context, cb) => {
 
 ```bash
 # Simulate GET request
-$ cat ./example/__tests__/events/api-gw.json | docker run --rm -v "$PWD":/var/task -i -e DOCKER_LAMBDA_USE_STDIN=1 lambci/lambda:nodejs8.10 example/index.handler
+cat ./functions/example/__tests__/events/api-gw.json | docker run --rm -v "$PWD":/var/task -i -e DOCKER_LAMBDA_USE_STDIN=1 lambci/lambda:nodejs8.10 functions/example/index.handler
 
 # Simulate POST request
-$ cat ./example/__tests__/events/api-gw-post.json | docker run --rm -v "$PWD":/var/task -i -e DOCKER_LAMBDA_USE_STDIN=1 lambci/lambda:nodejs8.10 example/index.handler
+cat ./functions/example/__tests__/events/api-gw-post.json | docker run --rm -v "$PWD":/var/task -i -e DOCKER_LAMBDA_USE_STDIN=1 lambci/lambda:nodejs8.10 functions/example/index.handler
 ```
 
 ## How to deploy
