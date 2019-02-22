@@ -6,6 +6,6 @@ module.exports = _.merge({}, baseConfig, {
   // Restore default config
   testPathIgnorePatterns: [
     '/node_modules/',
-    '<rootDir>/example'
+    '<rootDir>/functions/example'
   ]
 })

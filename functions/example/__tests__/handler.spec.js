@@ -17,5 +17,5 @@ test('should return valid json', async () => {
   const response = await client.post('/')
     .send({ hoge: 'fuga' })
     .expect(200)
-  expect(response.body).toEqual({ hoge: 'piyo' })
+  expect(response.body).toEqual({ url: '/', method: 'POST', body: { hoge: 'fuga' } })
 })

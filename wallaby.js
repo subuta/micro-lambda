@@ -4,13 +4,14 @@ module.exports = (wallaby) => {
   return {
     files: [
       { pattern: 'example/index.js', instrument: false },
-      'example/**/*',
+      'functions/example/**/*',
       'tests/**/*.js',
-      '!example/**/__tests__/*.spec.js'
+      '!**/node_modules/**/*',
+      '!functions/example/**/__tests__/*.spec.js'
     ],
 
     tests: [
-      'example/**/__tests__/*.spec.js'
+      'functions/example/**/__tests__/*.spec.js'
     ],
 
     env: {

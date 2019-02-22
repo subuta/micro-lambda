@@ -1,0 +1,7 @@
+{
+  "description": "Node.js example function with more memory and higher timeout",
+  "timeout": 10,
+  "memory": 512,
+  "runtime": "nodejs8.10",
+  "handler": "index.handler"
+}

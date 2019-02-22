@@ -10,12 +10,9 @@
     "test": "run-p test:*",
     "test:ex": "jest",
     "test:it": "jest -c ./jest.config.integration.js",
-    "build": "run-p build:*",
-    "build:bundle": "rollup -c",
-    "dev": "node -r esm node_modules/.bin/micro-dev example/handler.js",
-    "start": "node -r esm node_modules/.bin/micro example/handler.js",
-    "inspect": "node --inspect node_modules/.bin/micro-dev example/handler.js",
-    "prepare": "npm run build"
+    "dev": "node -r esm node_modules/.bin/micro-dev functions/example/handler.js",
+    "start": "node -r esm node_modules/.bin/micro functions/example/handler.js",
+    "inspect": "node --inspect node_modules/.bin/micro-dev functions/example/handler.js"
   },
   "repository": {
     "type": "git",
