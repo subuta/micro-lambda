@@ -25,7 +25,24 @@ exports.handler = (event, context, cb) => {
 
 ## How to run
 
-### Local run lambda (by docker-lambda)
+### Setup
+
+```
+# Install dependencies
+npm i
+
+# Copy dependencies to child.
+cp -r ./node_modules ./functions/example
+```
+
+### A. Local run micro
+
+```
+# Start dev server
+npm run dev
+```
+
+### B. Local run lambda (by docker-lambda)
 
 ```bash
 # Simulate GET request
@@ -53,7 +70,6 @@ apex --profile example init
 apex --profile example infra init
 
 # Dry run for see changes.
-cp -r ./node_modules ./functions/example
 apex --profile example deploy -D
 
 # Do deploy lambda.

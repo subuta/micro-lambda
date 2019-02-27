@@ -56,31 +56,11 @@ resource "aws_api_gateway_integration" "lambda" {
   resource_id = "${aws_api_gateway_method.proxy.resource_id}"
   http_method = "${aws_api_gateway_method.proxy.http_method}"
 
+  credentials = "${aws_iam_role.apig_aws_proxy.arn}"
+
   integration_http_method = "POST"
   type = "AWS_PROXY"
   uri = "${data.aws_lambda_function.example.invoke_arn}"
-}
-
-resource "aws_api_gateway_method_response" "200" {
-  rest_api_id = "${aws_api_gateway_rest_api.example.id}"
-  resource_id = "${aws_api_gateway_method.proxy.resource_id}"
-  http_method = "${aws_api_gateway_method.proxy.http_method}"
-  status_code = "200"
-
-  response_models = {
-    "application/json" = "Empty"
-  }
-}
-
-resource "aws_api_gateway_integration_response" "response" {
-  rest_api_id = "${aws_api_gateway_rest_api.example.id}"
-  resource_id = "${aws_api_gateway_method.proxy.resource_id}"
-  http_method = "${aws_api_gateway_method.proxy.http_method}"
-  status_code = "${aws_api_gateway_method_response.200.status_code}"
-
-  response_templates = {
-    "application/json" = ""
-  }
 }
 
 resource "aws_api_gateway_deployment" "example" {
@@ -90,18 +70,6 @@ resource "aws_api_gateway_deployment" "example" {
 
   rest_api_id = "${aws_api_gateway_rest_api.example.id}"
   stage_name = "test"
-}
-
-# Permission for example lambda.
-resource "aws_lambda_permission" "example" {
-  function_name = "${local.example_lambda_arn}"
-  statement_id = "AllowExecutionFromApiGateway"
-  action = "lambda:InvokeFunction"
-  principal = "apigateway.amazonaws.com"
-
-  # The /*/* portion grants access from any method on any resource
-  # within the API Gateway "REST API".
-  source_arn = "arn:aws:execute-api:${local.region}:${local.account_id}:${aws_api_gateway_rest_api.example.id}/*/*/${local.example_lambda_name}"
 }
 
 output "example_url" {
@@ -156,6 +124,54 @@ resource "aws_iam_role_policy" "cloudwatch" {
             "Resource": "*"
         }
     ]
+}
+EOF
+}
+
+resource "aws_iam_role" "apig_aws_proxy" {
+  name = "apig_aws_proxy_role"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "apigateway.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "apig_aws_proxy" {
+  name = "default"
+  role = "${aws_iam_role.apig_aws_proxy.id}"
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+      {
+          "Effect": "Allow",
+          "Action": [
+              "apigateway:*"
+          ],
+          "Resource": [
+              "arn:aws:apigateway:*::/*"
+          ]
+      },
+
+      {
+          "Effect": "Allow",
+          "Action": "lambda:InvokeFunction",
+          "Resource": "*"
+      }
+  ]
 }
 EOF
 }
