@@ -70,7 +70,7 @@
     "aws-serverless-express": "^3.3.5",
     "binary-case": "^1.1.4",
     "etag": "^1.8.1",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.19",
     "type-is": "^1.6.16"
   }
 }
